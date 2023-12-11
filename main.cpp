@@ -78,7 +78,7 @@ void onTcpConnectionEnd(const pcpp::ConnectionData& connData, pcpp::TcpReassembl
 
 struct Data
 {
-    http_requests_vec_t httpRequests;
+    http_requests_map_t httpRequests;
     rtsp_stream_vec_t rtspStreams;
 };
 
@@ -94,7 +94,7 @@ Data prepareData(std::string inputPath) {
     return { reassembly.getHttpRequests(), reassembly.getRtspStreams() };
 }
 
-net::awaitable<void> handle_session(tcp::socket socket, http_requests_vec_t& httpRequests) {
+net::awaitable<void> handle_session(tcp::socket socket, http_requests_map_t http) {
     for (;;) {
         beast::error_code ec;  // Declare error_code inside the coroutine
         beast::flat_buffer buffer;
@@ -107,25 +107,20 @@ net::awaitable<void> handle_session(tcp::socket socket, http_requests_vec_t& htt
         if (ec)
             co_return;
 
-        std::string uri = req.target();
+        auto reqs = http[req.target()];
 
-        for (auto& http : httpRequests) {
-            if (http.request.uri() == uri) {
-                auto& resp = http.response;
-                http::response<http::string_body> res{ static_cast<http::status>(resp.m_code), req.version() };
+        auto resp = *reqs->begin();
+        http::response<http::string_body> res{ static_cast<http::status>(resp.response.m_code), req.version() };
 
-                for (auto& [header, val] : resp.m_headers) {
-                    res.set(header, val);
-                    res.body() = resp.m_body;
-                }
-
-                co_await http::async_write(socket, res, net::redirect_error(net::use_awaitable, ec));
-                if (ec)
-                    co_return;
-                break;
-            }
+        for (auto& [header, val] : resp.response.m_headers) {
+            res.set(header, val);
+            res.body() = resp.response.m_body;
         }
-        httpRequests.erase(httpRequests.begin());
+
+        co_await http::async_write(socket, res, net::redirect_error(net::use_awaitable, ec));
+        if (ec)
+            co_return;
+        break;
     }
 
     beast::error_code ec;  // Declare a new error_code for the shutdown operation
@@ -133,7 +128,7 @@ net::awaitable<void> handle_session(tcp::socket socket, http_requests_vec_t& htt
     // Handle the shutdown error if needed
 }
 
-net::awaitable<void> listener(tcp::endpoint endpoint, http_requests_vec_t& httpRequests) {
+net::awaitable<void> listener(tcp::endpoint endpoint, http_requests_map_t http) {
     beast::error_code ec; // Declare error_code before use
     auto executor = co_await net::this_coro::executor;
     tcp::acceptor acceptor(executor, endpoint);
@@ -143,7 +138,7 @@ net::awaitable<void> listener(tcp::endpoint endpoint, http_requests_vec_t& httpR
         if (ec)
             co_return;
 
-        net::co_spawn(executor, handle_session(std::move(socket), httpRequests), net::detached);
+        net::co_spawn(executor, handle_session(std::move(socket), http), net::detached);
     }
 }
 
@@ -151,7 +146,7 @@ int main(int argc, char* argv[]) {
     std::string inputPath = R"(C:\Users\irahm\Documents\PcapParserVcpg\RaysharpLoginVideo.pcapng)";
     
     auto [httpRequests, rtspStreams] = prepareData(inputPath);
-    
+
     try {
         net::io_context ioc{ 1 };
         net::signal_set signals(ioc, SIGINT, SIGTERM);

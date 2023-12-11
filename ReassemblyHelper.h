@@ -3,6 +3,8 @@
 #include <TcpReassembly.h>
 
 #include "Http.h"
+#include "Generator.h"
+#include <functional>
 
 // flowkey, request
 using http_requests_t = std::map<uint32_t, RequestResponse>;
@@ -11,19 +13,38 @@ using rtsp_stream_t = std::map<uint32_t, PrepareRtspStream>;
 using http_requests_vec_t = std::vector<RequestResponse>;
 using rtsp_stream_vec_t = std::vector<RtspStream>;
 
+using gen = Generator<RequestResponse>;
+
+using http_requests_map_t = std::map<std::string_view, std::shared_ptr<gen>>;
+using http_requests_map1_t = std::map<std::string_view, std::vector<RequestResponse>>;
+
+auto generateUris(http_requests_vec_t vec) -> Generator<RequestResponse> {
+    unsigned i = 0;
+    while (true) {
+        co_yield vec[i++ % vec.size()];
+    }
+}
+
+
 class ReassemblyHelper
 {
     http_requests_t http_requests;
     rtsp_stream_t rtspStreams;
 
 public:
-    http_requests_vec_t getHttpRequests() {
-        http_requests_vec_t reqs;
-        for (auto&& req : http_requests) {
-            reqs.push_back(req.second);
+    http_requests_map_t getHttpRequests() {
+        http_requests_map1_t reqs;
+        for (auto&& http : http_requests) {
+            auto& req = reqs[http.second.request.uri()];
+            req.push_back(http.second);
         }
 
-        return reqs;
+        http_requests_map_t gens;
+        for (auto&& [uri, vec] : reqs) {
+            gens[uri] = std::make_shared<Generator<RequestResponse>>(generateUris(vec));
+        }
+
+        return gens;
     }
 
     rtsp_stream_vec_t getRtspStreams() {
