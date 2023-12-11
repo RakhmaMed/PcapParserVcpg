@@ -151,9 +151,6 @@ int main(int argc, char* argv[]) {
     std::string inputPath = R"(C:\Users\irahm\Documents\PcapParserVcpg\RaysharpLoginVideo.pcapng)";
     
     auto [httpRequests, rtspStreams] = prepareData(inputPath);
-    for (auto& req : httpRequests) {
-        req.parse();
-    }
     
     try {
         net::io_context ioc{ 1 };

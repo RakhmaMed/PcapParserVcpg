@@ -15,7 +15,7 @@ using namespace PatterSeekerNS;
 class HttpRequest
 {
     util::timestamp_ms m_time;
-    std::string m_data;
+    std::shared_ptr<std::string> m_data{ new std::string };
     util::ConnInfo m_conninfo;
     std::string_view m_method;
     std::string_view m_uri;
@@ -24,14 +24,14 @@ class HttpRequest
 
 public:
     bool isEmpty() const {
-        return m_data.empty();
+        return m_data->empty();
     }
     void append(std::string_view newData) {
-        m_data.append(newData);
+        m_data->append(newData);
     }
 
     std::string to_string() {
-        return m_data;
+        return *m_data;
     }
 
     bool parse() {
@@ -39,7 +39,7 @@ public:
         static const std::string_view GET = "GET";
         static const std::string_view POST = "POST";
 
-        PatternSeeker parser{ m_data };
+        PatternSeeker parser{ *m_data };
         if (parser.expect(GET))
             m_method = GET;
         if (parser.expect(POST))
@@ -122,19 +122,19 @@ struct HttpResponse
 {
     util::timestamp_ms m_time;
     util::ConnInfo m_conninfo;
-    std::string m_data;
+    std::shared_ptr<std::string> m_data{ new std::string };
     uint32_t m_code;
     util::headers_view_t m_headers;
     std::string_view m_body;
 public:
     bool isEmpty() const {
-        return m_data.empty();
+        return m_data->empty();
     }
     void append(std::string_view newData) {
-        m_data.append(newData);
+        m_data->append(newData);
     }
     std::string to_string() {
-        return m_data;
+        return *m_data;
     }
 
 
@@ -149,7 +149,7 @@ public:
     }
 
     bool parse() {
-        PatternSeeker parser{ m_data };
+        PatternSeeker parser{ *m_data };
         if (!parser.expect("HTTP/1.1 "))
             return false;
 
