@@ -1,15 +1,75 @@
 #pragma once
 
+#include "PatternSeeker.h"
+
+#include <TcpReassembly.h>
+
 #include <string>
 #include <sstream>
+#include <iostream>
+#include <unordered_map>
+
+#define UNUSED(x) (void)(x);
+
+
+namespace util
+{
 
 //enum class timestamp_ms : uint64_t {};
 
 using timestamp_ms = uint64_t;
 
-timestamp_ms convertToTimestamp(const timespec& timeValue)
+timestamp_ms convertToTimestamp(const timeval& timeValue)
 {
-    return timeValue.tv_sec * 1000ULL + timeValue.tv_nsec / 1000000ULL;
+    return timeValue.tv_sec * 1000ULL + timeValue.tv_usec / 1000ULL;
+}
+
+std::string_view trim(std::string_view in)
+{
+    auto left = in.begin();
+    while (true) {
+        if (left == in.end())
+            return {};
+        if (!isspace(*left))
+            break;
+        left += 1;
+    }
+    auto right = in.end() - 1;
+    while (right > left && isspace(*right))
+    {
+        right -= 1;
+    }
+
+    return in.substr(std::distance(in.begin(), left), std::distance(left, right) + 1);
+}
+
+std::string trim(std::string in)
+{
+    auto left = in.begin();
+    while (true) {
+        if (left == in.end())
+            return {};
+        if (!isspace(*left))
+            break;
+        left += 1;
+    }
+    auto right = in.end() - 1;
+    while (right > left && isspace(*right))
+    {
+        right -= 1;
+    }
+
+    return in.substr(std::distance(in.begin(), left), std::distance(left, right) + 1);
+}
+
+
+
+bool isHttpPort(const pcpp::ConnectionData& connData) {
+    return connData.dstPort == 80;
+}
+
+bool isRtspPort(const pcpp::ConnectionData& connData) {
+    return connData.dstPort == 554 || connData.srcPort == 554;
 }
 
 struct ConnInfo {
@@ -18,6 +78,10 @@ struct ConnInfo {
     uint16_t    source_port;
     uint16_t    dest_port;
 
+    bool isEmpty() {
+        return source_ip.empty() && dest_ip.empty() && !source_port && !dest_port;
+    }
+    
     friend std::ostream& operator<<(std::ostream& oss, const ConnInfo& info) {
         oss << info.source_ip << ':' << info.source_port << " -> " << info.dest_ip << ':' << info.dest_port;
         return oss;
@@ -41,3 +105,20 @@ struct ConnInfoHash {
     }
 };
 
+using headers_view_t = std::unordered_map<std::string_view, std::string_view>;
+
+headers_view_t parseHeaders(PatterSeekerNS::PatternSeeker parser) {
+    headers_view_t headers{};
+    while (parser.isNotEmpty()) {
+        parser.skipWhiteSpaces();
+        auto name = parser.extract(":", PatterSeekerNS::move_after);
+        if (name.isEmpty())
+            break;
+        auto val = parser.extract("\n", PatterSeekerNS::move_after);
+        if (val.isEmpty())
+            val = parser;
+        headers.emplace(name.to_string_view(), trim(val.to_string_view()));
+    }
+    return headers;
+}
+}
