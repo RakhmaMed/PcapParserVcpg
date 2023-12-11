@@ -30,6 +30,10 @@ public:
         m_data.append(newData);
     }
 
+    std::string to_string() {
+        return m_data;
+    }
+
     bool parse() {
         // method
         static const std::string_view GET = "GET";
@@ -48,7 +52,7 @@ public:
         if (!parser.startsWith(" /"))
             return false;
 
-        auto uri = parser.extract(" /", " HTTP/1.1", move_after);
+        auto uri = parser.extract(" ", " HTTP/1.1", move_after);
         if (uri.isEmpty())
             return false;
 
@@ -114,7 +118,7 @@ public:
     }
 };
 
-class HttpResponse
+struct HttpResponse
 {
     util::timestamp_ms m_time;
     util::ConnInfo m_conninfo;
@@ -129,6 +133,10 @@ public:
     void append(std::string_view newData) {
         m_data.append(newData);
     }
+    std::string to_string() {
+        return m_data;
+    }
+
 
     void setConnInfo(const util::ConnInfo& connInfo) {
         if (m_conninfo.isEmpty())
@@ -198,6 +206,11 @@ struct RequestResponse
     bool parse() {
         return request.parse() && response.parse();
     }
+
+    std::string to_string() {
+        return request.to_string() + "\n" + response.to_string();;
+    }
+
 
     friend std::ostream& operator<<(std::ostream& oss, RequestResponse& r) {
         oss << r.request << "\n\n" << r.response << "\n------------------\n";
