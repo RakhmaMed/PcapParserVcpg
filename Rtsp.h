@@ -68,8 +68,6 @@ public:
 	}
 
 	RtspStream getStream() const {
-		//fs::path currentPath = fs::current_path();
-		//currentPath /= m_url;
 		return RtspStream{ m_steps, m_url };
 	}
 

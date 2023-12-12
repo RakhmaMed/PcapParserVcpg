@@ -183,6 +183,7 @@ net::awaitable<void> start_transferring_video(tcp::socket socket, std::string fi
     co_return;
 }
 
+// TODO: check / uri, not url
 net::awaitable<void> handle_rtsp_session(tcp::socket socket, rtsp_stream_map_SP_t rtsp) {
     for (;;) {
         data_t data;
