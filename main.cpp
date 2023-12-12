@@ -240,7 +240,15 @@ net::awaitable<void> rtsp_listener(tcp::endpoint endpoint, rtsp_stream_map_SP_t 
 }
 
 int main(int argc, char* argv[]) {
-    std::string inputPath = R"(C:\Users\irahm\Documents\PcapParserVcpg\RaysharpLoginVideo.pcapng)";
+    std::string inputPath;
+    if (argc < 2) {
+        inputPath = R"(C:\Users\irahm\Documents\PcapParserVcpg\RaysharpLoginVideo.pcapng)";
+    }
+    else if (argc == 2) {
+        inputPath = argv[1];
+    }
+
+    
     auto [httpRequests, rtspStreams] = prepareData(inputPath);
 
     try {
