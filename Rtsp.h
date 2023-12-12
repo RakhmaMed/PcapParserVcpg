@@ -4,6 +4,9 @@
 #include "PatternSeeker.h"
 
 #include <fstream>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 using headers_t = std::unordered_map<std::string, std::string>;
 
@@ -39,6 +42,11 @@ struct RtspStream
 {
 	std::vector<RtspStep> m_steps;
 	std::string m_url;
+	uint32_t step = 0;
+
+	const RtspStep& getNextStep() {
+		return m_steps[step++ % m_steps.size()];
+	}
 };
 
 struct PrepareRtspStream
@@ -57,7 +65,9 @@ public:
 		parseResponse(data);
 	}
 
-	RtspStream getStream() {
+	RtspStream getStream() const {
+		//fs::path currentPath = fs::current_path();
+		//currentPath /= m_url;
 		return RtspStream{ m_steps, m_url };
 	}
 
@@ -99,7 +109,7 @@ private:
 				val = parser;
 			step.headers.emplace(name.to_string(), util::trim(val.to_string()));
 		}
-		m_steps.emplace_back(step);
+		m_steps.push_back(step);
 	}
 
 	void parseResponse(std::string data) {
@@ -117,7 +127,7 @@ private:
 			m_file.open(replaceSymbols(m_url) + ".txt", std::ios::out | std::ios::binary);
 		}
 		if (m_file.is_open()) {
-			m_file << data << DELIM;
+			m_file << data << DELIM << '`';
 		}
 	}
 };

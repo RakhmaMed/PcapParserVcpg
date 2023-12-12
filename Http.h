@@ -14,9 +14,7 @@ using namespace PatterSeekerNS;
 
 class HttpRequest
 {
-    util::timestamp_ms m_time;
     std::shared_ptr<std::string> m_data{ new std::string };
-    util::ConnInfo m_conninfo;
     std::string_view m_method;
     std::string_view m_uri;
     std::string_view m_body;
@@ -97,18 +95,8 @@ public:
         return m_body;
     }
 
-    void setConnInfo(const util::ConnInfo& connInfo) {
-        if (m_conninfo.isEmpty())
-            m_conninfo = connInfo;
-    }
-
-    void setTime(util::timestamp_ms time) {
-        if (!m_time)
-            m_time = time;
-    }
-
     friend std::ostream& operator<<(std::ostream& oss, HttpRequest& req) {
-        oss << req.m_conninfo << ' ' << req.m_time << ' ' << req.method() << ' ' << req.uri();
+        oss << req.method() << ' ' << req.uri();
         for (auto&& [header, val] : req.headers()) {
             oss << '\n' << header << ": " << val;
         }
@@ -120,8 +108,6 @@ public:
 
 struct HttpResponse
 {
-    util::timestamp_ms m_time;
-    util::ConnInfo m_conninfo;
     std::shared_ptr<std::string> m_data{ new std::string };
     uint32_t m_code;
     util::headers_view_t m_headers;
@@ -135,17 +121,6 @@ public:
     }
     std::string to_string() {
         return *m_data;
-    }
-
-
-    void setConnInfo(const util::ConnInfo& connInfo) {
-        if (m_conninfo.isEmpty())
-            m_conninfo = connInfo;
-    }
-
-    void setTime(util::timestamp_ms time) {
-        if (!m_time)
-            m_time = time;
     }
 
     bool parse() {
@@ -184,7 +159,7 @@ public:
     }
 
     friend std::ostream& operator<<(std::ostream& oss, HttpResponse& resp) {
-        oss << resp.m_conninfo << ' ' << resp.m_time << ' ' << resp.m_code;
+        oss << resp.m_code;
         for (auto&& [header, val] : resp.m_headers) {
             oss << '\n' << header << ": " << val;
         }

@@ -11,20 +11,35 @@ using http_requests_t = std::map<uint32_t, RequestResponse>;
 using rtsp_stream_t = std::map<uint32_t, PrepareRtspStream>;
 
 using http_requests_vec_t = std::vector<RequestResponse>;
-using rtsp_stream_vec_t = std::vector<RtspStream>;
 
-using gen = Generator<RequestResponse>;
+using http_requests_map_t = std::map<std::string_view, http_requests_vec_t>;
+using rtsp_stream_map_t = std::map<std::string, RtspStream>;
+using rtsp_stream_map_SP_t = std::shared_ptr<rtsp_stream_map_t>;
 
-using http_requests_map_t = std::map<std::string_view, std::shared_ptr<gen>>;
-using http_requests_map1_t = std::map<std::string_view, std::vector<RequestResponse>>;
 
-auto generateUris(http_requests_vec_t vec) -> Generator<RequestResponse> {
-    unsigned i = 0;
-    while (true) {
-        co_yield vec[i++ % vec.size()];
+struct ReqResHolder
+{
+    ReqResHolder(http_requests_map_t map) {
+        for (auto&& [uri, http] : map) {
+            m_uris[uri] = helper{ http };
+        }
     }
-}
+    struct helper {
+        std::vector<RequestResponse> vec{};
+        uint32_t i = 0;
 
+        const RequestResponse& getNextReqRes() {
+            return vec[i++ % vec.size()];
+        }
+    };
+
+    const RequestResponse& operator[](std::string_view str) {
+        return m_uris[str].getNextReqRes();
+    }
+
+    std::map<std::string_view, helper> m_uris;
+};
+using req_res_holder_SP_t = std::shared_ptr<ReqResHolder>;
 
 class ReassemblyHelper
 {
@@ -32,25 +47,23 @@ class ReassemblyHelper
     rtsp_stream_t rtspStreams;
 
 public:
-    http_requests_map_t getHttpRequests() {
-        http_requests_map1_t reqs;
+    req_res_holder_SP_t getHttpRequests() {
+        http_requests_map_t reqs;
         for (auto&& http : http_requests) {
             auto& req = reqs[http.second.request.uri()];
             req.push_back(http.second);
         }
 
-        http_requests_map_t gens;
-        for (auto&& [uri, vec] : reqs) {
-            gens[uri] = std::make_shared<Generator<RequestResponse>>(generateUris(vec));
-        }
-
-        return gens;
+        return std::make_shared<ReqResHolder>(reqs);
     }
 
-    rtsp_stream_vec_t getRtspStreams() {
-        rtsp_stream_vec_t streams;
-        for (auto&& req : rtspStreams) {
-            streams.push_back(req.second.getStream());
+    rtsp_stream_map_SP_t getRtspStreams() {
+        auto streams = std::make_shared<rtsp_stream_map_t>();
+        for (auto&& [flowKey, stream] : rtspStreams) {
+            auto url = stream.getStream().m_url;
+            if (url.empty())
+                continue;
+            (*streams)[url] = stream.getStream();
         }
 
         return streams;
@@ -92,7 +105,7 @@ public:
             //std::cout << reqresp;
         }
         else if (util::isRtspPort(connData)) {
-            auto& rtspStream = rtspStreams[connData.flowKey];
+            //auto& rtspStream = rtspStreams[connData.flowKey];
         }
         else {
             // Determine who closed connection
@@ -115,14 +128,10 @@ private:
         bool isRequest = side == 0;
         std::string_view data{reinterpret_cast<const char*>(tcpData.getData()), tcpData.getDataLength()};
         if (isRequest) {
-            reqresp.request.setConnInfo(getConnInfo(tcpData.getConnectionData()));
             reqresp.request.append(data);
-            reqresp.request.setTime(util::convertToTimestamp(tcpData.getTimeStamp()));
         }
         else {
-            reqresp.response.setConnInfo(getConnInfo(tcpData.getConnectionData()));
             reqresp.response.append(data);
-            reqresp.response.setTime(util::convertToTimestamp(tcpData.getTimeStamp()));
         }
 	}
 
