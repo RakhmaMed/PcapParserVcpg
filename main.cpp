@@ -153,15 +153,13 @@ Generator<std::string> getData(std::string filename) {
     }
     while (file.is_open() && !file.eof()) {
         while (std::getline(file, line, '`')) {
-            //std::cout << line;
             if (!line.ends_with(DELIM)) {
-                data += line;
+                data += line + '`';
                 continue;
             }
 
             data += line.substr(0, line.size() - DELIM.size());
             co_yield data;
-            file.ignore(1);
             data.clear();
         }
     }
@@ -177,12 +175,12 @@ net::awaitable<void> sleep_for(std::chrono::milliseconds duration) {
 
 net::awaitable<void> start_transferring_video(tcp::socket socket, std::string filename) {
     for (auto&& data : getData(filename)) {
-        std::cout << data;
         co_await socket.async_write_some(net::buffer(data), net::use_awaitable);
         co_await sleep_for(10ms);
     }
     boost::system::error_code ec;
     socket.shutdown(tcp::socket::shutdown_send, ec);
+    co_return;
 }
 
 net::awaitable<void> handle_rtsp_session(tcp::socket socket, rtsp_stream_map_SP_t rtsp) {
@@ -242,7 +240,7 @@ net::awaitable<void> rtsp_listener(tcp::endpoint endpoint, rtsp_stream_map_SP_t 
 int main(int argc, char* argv[]) {
     std::string inputPath;
     if (argc < 2) {
-        inputPath = R"(C:\Users\irahm\Documents\PcapParserVcpg\RaysharpLoginVideo.pcapng)";
+        inputPath = R"(..\RaysharpLoginVideo.pcapng)";
     }
     else if (argc == 2) {
         inputPath = argv[1];

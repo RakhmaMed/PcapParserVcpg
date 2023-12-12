@@ -56,6 +56,7 @@ private:
 	std::string m_url;
 	std::string m_ip;
 	std::ofstream m_file;
+	std::ofstream m_testfile;
 
 public:
 	void parseRstp(std::string data, bool isRequest) {
@@ -137,8 +138,13 @@ private:
 		if (!m_file.is_open()) {
 			m_file.open(replaceSymbols(m_url) + ".txt", std::ios::out | std::ios::binary);
 		}
+
+		if (!m_testfile.is_open()) {
+			m_testfile.open(replaceSymbols(m_url) + "test.txt", std::ios::out | std::ios::binary);
+		}
 		if (m_file.is_open()) {
 			m_file << data << DELIM << '`';
+			m_testfile << data;
 		}
 	}
 };
