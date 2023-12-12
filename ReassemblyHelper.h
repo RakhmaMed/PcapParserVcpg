@@ -60,10 +60,10 @@ public:
     rtsp_stream_map_SP_t getRtspStreams() {
         auto streams = std::make_shared<rtsp_stream_map_t>();
         for (auto&& [flowKey, stream] : rtspStreams) {
-            auto url = stream.getStream().m_url;
-            if (url.empty())
+            auto uri = stream.getStream().m_uri;
+            if (uri.empty())
                 continue;
-            (*streams)[url] = stream.getStream();
+            (*streams)[uri] = stream.getStream();
         }
 
         return streams;

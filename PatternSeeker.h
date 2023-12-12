@@ -62,7 +62,7 @@ public:
     bool startsWith(std::string_view expected) const;
 
     // Find the `expected` string and move the pointer after `expected`
-    bool to(std::string_view expected);
+    bool to(std::string_view expected, MoveMode mode=none);
 
     // Extract data `from` and `to` the desired strings.
     PatternSeeker extract(std::string_view from, std::string_view to, MoveMode mode=none);

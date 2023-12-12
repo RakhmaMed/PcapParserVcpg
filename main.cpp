@@ -200,14 +200,16 @@ net::awaitable<void> handle_rtsp_session(tcp::socket socket, rtsp_stream_map_SP_
         auto method = parser.extract(" ").to_string_view();
         std::cout << "Got " << method << '\n';
 
-        auto url = parser.extract(" ", " RTSP/1.0");
-        if (url.isEmpty()) {
-            std::cout << "URL is missing\n";
+        auto url = parser.extract("rtsp://", " RTSP/1.0");
+        url.to("/", move_before);
+        auto uri = url.to_string();
+        if (uri.empty()) {
+            std::cout << "uri is missing\n";
             continue;
         }
-        auto streamIt = std::ranges::find_if(*rtsp, [url](auto&& elem) { return url.startsWith(elem.first); });
+        auto streamIt = std::ranges::find_if(*rtsp, [uri](auto&& elem) { return uri.starts_with(elem.first); });
         if (streamIt == rtsp->end()) {
-            std::cout << "can't find this url: " << url.to_string_view() << '\n';
+            std::cout << "can't find this uri: " << uri << '\n';
             continue;
         }
         auto& step = streamIt->second.getNextStep();
@@ -217,7 +219,7 @@ net::awaitable<void> handle_rtsp_session(tcp::socket socket, rtsp_stream_map_SP_
             std::cout << "Wrong command, expected: " << step.method << ", actual " << method << '\n';
 
         if (method == "PLAY") {
-            std::string path = replaceSymbols(streamIt->second.m_url) + ".txt";
+            std::string path = replaceSymbols(uri) + ".txt";
             net::co_spawn(socket.get_executor(), start_transferring_video(std::move(socket), path), net::detached);
             break;
         }

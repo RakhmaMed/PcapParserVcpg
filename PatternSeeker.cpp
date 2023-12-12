@@ -67,7 +67,7 @@ bool PatternSeeker::startsWith(std::string_view expected) const
     return m_str.starts_with(expected);
 }
 
-bool PatternSeeker::to(std::string_view expected)
+bool PatternSeeker::to(std::string_view expected, MoveMode mode)
 {
     const size_t pos = m_str.find(expected);
     if (pos == std::string_view::npos)
@@ -75,7 +75,17 @@ bool PatternSeeker::to(std::string_view expected)
         return false;
     }
 
-    m_str.remove_prefix(pos + expected.size());
+    switch (mode)
+    {
+    case move_before:
+        m_str.remove_prefix(pos);
+        break;
+    case move_after:
+    case none:
+        m_str.remove_prefix(pos + expected.size());
+        break;
+    }
+
     return true;
 }
 

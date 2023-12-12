@@ -12,6 +12,7 @@ using headers_t = std::unordered_map<std::string, std::string>;
 
 static const std::string_view DELIM = "<--__-->";
 
+// TODO: come up with better name
 std::string replaceSymbols(std::string str) {
 	for (auto& ch : str) {
 		if (ch == ':' || ch == '/')
@@ -41,7 +42,7 @@ struct RtspStep
 struct RtspStream
 {
 	std::vector<RtspStep> m_steps;
-	std::string m_url;
+	std::string m_uri;
 	uint32_t step = 0;
 
 	const RtspStep& getNextStep() {
@@ -53,7 +54,7 @@ struct PrepareRtspStream
 {
 private:
 	std::vector<RtspStep> m_steps;
-	std::string m_url;
+	std::string m_uri;
 	std::ofstream m_file;
 	std::ofstream m_testfile;
 
@@ -67,7 +68,7 @@ public:
 	}
 
 	RtspStream getStream() const {
-		return RtspStream{ m_steps, m_url };
+		return RtspStream{ m_steps, m_uri };
 	}
 
 	friend std::ostream& operator<<(std::ostream& oss, RtspStream& stream) {
@@ -96,8 +97,10 @@ private:
 			return;
 		}
 
-		step.m_url = parser.extract(" ", " RTSP/1.0", move_after).to_string();
-		m_url = step.m_url;
+		auto url = parser.extract("rtsp://", " RTSP/1.0", move_after);
+		step.m_url = url.to_string();
+		url.to("/", move_before);
+		m_uri = url.to_string();
 		while (parser.isNotEmpty()) {
 			parser.skipWhiteSpaces();
 			auto name = parser.extract(":", PatterSeekerNS::move_after);
@@ -123,11 +126,11 @@ private:
 		}
 
 		if (!m_file.is_open()) {
-			m_file.open(replaceSymbols(m_url) + ".txt", std::ios::out | std::ios::binary);
+			m_file.open(replaceSymbols(m_uri) + ".txt", std::ios::out | std::ios::binary);
 		}
 
 		if (!m_testfile.is_open()) {
-			m_testfile.open(replaceSymbols(m_url) + "test.txt", std::ios::out | std::ios::binary);
+			m_testfile.open(replaceSymbols(m_uri) + "test.txt", std::ios::out | std::ios::binary);
 		}
 		if (m_file.is_open()) {
 			m_file << data << DELIM << '`';
