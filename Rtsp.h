@@ -54,6 +54,7 @@ struct PrepareRtspStream
 private:
 	std::vector<RtspStep> m_steps;
 	std::string m_url;
+	std::string m_ip;
 	std::ofstream m_file;
 
 public:
@@ -79,6 +80,10 @@ public:
 	}
 
 private:
+	std::string replace(std::string str) {
+		return util::replace(str, m_ip, "127.0.0.1");
+	}
+
 	void parseRequest(std::string data) {
 		RtspStep step;
 		PatternSeeker parser{ data };
@@ -98,10 +103,11 @@ private:
 		}
 
 		auto url = parser.extract(" ", " RTSP/1.0", move_after);
-
-		if (url.expect("rtsp://") && url.extract(":", move_after).isNotEmpty()) {
-			step.m_url = "rtsp://127.0.0.1:" + url.to_string();
-		}		
+		auto ip = url.extract("rtsp://", ":");
+		if (m_ip.empty())
+			m_ip = ip.to_string();
+	
+		step.m_url = replace(url.to_string());
 
 		m_url = step.m_url;
 		while (parser.isNotEmpty()) {
@@ -112,7 +118,7 @@ private:
 			auto val = parser.extract("\n", PatterSeekerNS::move_after);
 			if (val.isEmpty())
 				val = parser;
-			step.headers.emplace(name.to_string(), util::trim(val.to_string()));
+			step.headers.emplace(replace(name.to_string()), replace(util::trim(val.to_string())));
 		}
 		m_steps.push_back(step);
 	}
@@ -124,7 +130,7 @@ private:
 				std::cout << "WARNING!!! We got response without request";
 				return;
 			}
-			m_steps.back().response = data;
+			m_steps.back().response = replace(data);
 			return;
 		}
 
