@@ -97,7 +97,12 @@ private:
 			return;
 		}
 
-		step.m_url = parser.extract(" ", " RTSP/1.0", move_after).to_string();
+		auto url = parser.extract(" ", " RTSP/1.0", move_after);
+
+		if (url.expect("rtsp://") && url.extract(":", move_after).isNotEmpty()) {
+			step.m_url = "rtsp://127.0.0.1:" + url.to_string();
+		}		
+
 		m_url = step.m_url;
 		while (parser.isNotEmpty()) {
 			parser.skipWhiteSpaces();
