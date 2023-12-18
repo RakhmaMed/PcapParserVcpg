@@ -4,6 +4,7 @@
 #include <string_view>
 #include <optional>
 
+#include <cstdint>
 #include <cctype>
 #include <cerrno>
 

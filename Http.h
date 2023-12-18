@@ -8,6 +8,7 @@
 #include <iostream>
 #include <optional>
 #include <unordered_map>
+#include <memory>
 
 using http_method_t = pcpp::HttpRequestLayer::HttpMethod;
 using namespace PatterSeekerNS;
