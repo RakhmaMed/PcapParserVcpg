@@ -134,7 +134,6 @@ private:
             reqresp.response.append(data);
         }
 	}
-
     void parseRtsp(int8_t side, const pcpp::TcpStreamData& tcpData) {
         auto& rtspStream = rtspStreams[tcpData.getConnectionData().flowKey];
         std::string data{ reinterpret_cast<const char*>(tcpData.getData()), tcpData.getDataLength() };

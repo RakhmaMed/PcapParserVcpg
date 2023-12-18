@@ -43,6 +43,7 @@ struct RtspStream
 {
 	std::vector<RtspStep> m_steps;
 	std::string m_uri;
+	std::vector<std::string> m_payload;
 	uint32_t step = 0;
 
 	const RtspStep& getNextStep() {
@@ -55,8 +56,10 @@ struct PrepareRtspStream
 private:
 	std::vector<RtspStep> m_steps;
 	std::string m_uri;
-	std::ofstream m_file;
-	std::ofstream m_testfile;
+	//std::ofstream m_file;
+	//std::ofstream m_testfileOut;
+	//std::ofstream m_testfileIn;
+	std::vector<std::string> m_payload;
 
 public:
 	void parseRstp(std::string data, bool isRequest) {
@@ -68,7 +71,7 @@ public:
 	}
 
 	RtspStream getStream() const {
-		return RtspStream{ m_steps, m_uri };
+		return RtspStream{ m_steps, m_uri, m_payload };
 	}
 
 	friend std::ostream& operator<<(std::ostream& oss, RtspStream& stream) {
@@ -80,6 +83,7 @@ public:
 
 private:
 	void parseRequest(std::string data) {
+
 		RtspStep step;
 		PatternSeeker parser{ data };
 
@@ -93,7 +97,8 @@ private:
 		}
 
 		if (step.method.empty()) {
-			std::cout << "WARNING!!! Can't parse method!";
+			std::cout << "WARNING!!! Can't parse method!\n";
+			std::cout << data.size();
 			return;
 		}
 
@@ -125,16 +130,18 @@ private:
 			return;
 		}
 
-		if (!m_file.is_open()) {
+		m_payload.push_back(data);
+
+		/*if (!m_file.is_open()) {
 			m_file.open(replaceSymbols(m_uri) + ".txt", std::ios::out | std::ios::binary);
 		}
 
-		if (!m_testfile.is_open()) {
-			m_testfile.open(replaceSymbols(m_uri) + "test.txt", std::ios::out | std::ios::binary);
+		if (!m_testfileOut.is_open()) {
+			m_testfileOut.open(replaceSymbols(m_uri) + "out.txt", std::ios::out | std::ios::binary);
 		}
 		if (m_file.is_open()) {
 			m_file << data << DELIM << '`';
-			m_testfile << data;
-		}
+			m_testfileOut << data;
+		}*/
 	}
 };

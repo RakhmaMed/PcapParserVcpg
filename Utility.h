@@ -8,9 +8,12 @@
 #include <sstream>
 #include <iostream>
 #include <unordered_map>
+#include <span>
+#include <cassert>
+
+#include <boost/endian/arithmetic.hpp>
 
 #define UNUSED(x) (void)(x);
-
 
 namespace util
 {
@@ -121,4 +124,98 @@ headers_view_t parseHeaders(PatterSeekerNS::PatternSeeker parser) {
     }
     return headers;
 }
+
+template<typename T>
+class BitStream
+{
+public:
+	/// Constructs new BitStream object from buffer.
+	explicit BitStream(std::span<T> buffer) :
+		m_buffer(buffer),
+		m_position(buffer.begin()),
+		m_bitsLeft(8)
+	{}
+
+	/// Skips specified number of bits from stream.
+	void skip(int count)
+	{
+		m_bitsLeft -= count;
+
+		while (m_bitsLeft <= 0)
+		{
+			++m_position;
+			m_bitsLeft += 8;
+		}
+	}
+
+	/// Pops number of bits from stream.
+	/// Maximum 32 bits integers are supported.
+	uint32_t pop(int count)
+	{
+		static const uint32_t MASK[33] =
+		{ 0x00,
+			0x01,		0x03,		0x07,		0x0f,
+			0x1f,		0x3f,		0x7f,		0xff,
+			0x1ff,		0x3ff,		0x7ff,		0xfff,
+			0x1fff,		0x3fff,		0x7fff,		0xffff,
+			0x1ffff,	0x3ffff,	0x7ffff,	0xfffff,
+			0x1fffff,	0x3fffff,	0x7fffff,	0xffffff,
+			0x1ffffff,	0x3ffffff,	0x7ffffff,	0xfffffff,
+			0x1fffffff,	0x3fffffff,	0x7fffffff,	0xffffffff };
+		int shift = 0;
+		uint32_t result = 0;
+
+		assert(count <= 32);
+
+		while (count > 0)
+		{
+			if (m_position == m_buffer.end())
+			{
+				// Error in protocol.
+				assert(0);
+				break;
+			}
+
+			if ((shift = m_bitsLeft - count) >= 0)
+			{
+				// more in the buffer than requested
+				result |= (*m_position >> shift) & MASK[count];
+				m_bitsLeft -= count;
+				if (m_bitsLeft == 0)
+				{
+					++m_position;
+					m_bitsLeft = 8;
+				}
+				return result;
+			}
+			else
+			{
+				// less in the buffer than requested
+				result |= (*m_position & MASK[m_bitsLeft]) << -shift;
+				count -= m_bitsLeft;
+				++m_position;
+				m_bitsLeft = 8;
+			}
+		}
+
+		return result;
+	}
+
+	std::span<T>::iterator position() const
+	{
+		// Ensure we are called only on aligned byte.
+		assert(m_bitsLeft == 8);
+		return m_position;
+	}
+
+	std::size_t bitPosition() const
+	{
+		return (m_position - m_buffer.begin()) * 8 + (8 - m_bitsLeft);
+	}
+
+private:
+	std::span<T>			m_buffer;
+	std::span<T>::iterator	m_position;
+	int						m_bitsLeft;
+};
 }
