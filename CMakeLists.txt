@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 # popen()/pclose() are not C++ standards
 set(CMAKE_CXX_EXTENSIONS ON)
 
-set(BOOST_ROOT "C:/Users/irahm/Documents/boost_1_83_0")
+set(BOOST_ROOT $ENV{BOOST_DIR})
 
 FIND_PACKAGE(Boost)
 IF (Boost_FOUND)
