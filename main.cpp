@@ -2,6 +2,7 @@
 #include "Rtsp.h"
 #include "Generator.h"
 #include "ReassemblyHelper.h"
+#include "Raysharp.h"
 
 #include <fstream>
 #include <ranges>
@@ -304,7 +305,7 @@ struct RTSPInterleavedHeader
 int main(int argc, char* argv[]) {
     std::string inputPath;
     if (argc < 2) {
-        inputPath = R"(..\RaysharpVLC_TCP.pcapng)";
+        inputPath = R"(C:\Users\irahm\Documents\GitHub\PcapParserVcpg\fd_meta.pcapng)";
     }
     else if (argc == 2) {
         inputPath = argv[1];
@@ -335,28 +336,33 @@ int main(int argc, char* argv[]) {
             rtpHeader.padding = (bs.pop(1) != 0);
 
             const bool hasExtension = (bs.pop(1) != 0);
+            std::cout << "has extension: " << hasExtension << '\n';
             boost::uint32_t csrcCount = bs.pop(4);
+            std::cout << "csrc count: " << csrcCount << '\n';
 
             // Marker bit
             rtpHeader.isMark = (bs.pop(1) != 0);
+            std::cout << "marker bit: " << rtpHeader.isMark << '\n';
 
             //payload type.
             rtpHeader.payloadType = static_cast<boost::uint8_t>(bs.pop(7));
-            //std::cout << "payload type: " << static_cast<int>(rtpHeader.payloadType) << '\n';
+            std::cout << "payload type: " << static_cast<int>(rtpHeader.payloadType) << '\n';
 
             // Sequence Number.
             rtpHeader.sequenceNumber = static_cast<boost::uint16_t>(bs.pop(16));
-            //std::cout << "sequence number: " << rtpHeader.sequenceNumber << '\n';
+            std::cout << "sequence number: " << rtpHeader.sequenceNumber << '\n';
 
             // Timestamp.
             rtpHeader.rtpTimeStamp = bs.pop(32);
-            //std::cout << "timestamp: " << rtpHeader.rtpTimeStamp << '\n';
+            std::cout << "timestamp: " << rtpHeader.rtpTimeStamp << '\n';
 
             // SSRC
             rtpHeader.ssrc = bs.pop(32);
+            std::cout << "ssrc: " << rtpHeader.ssrc << '\n';
 
             // CSRC identifiers (optional).
             const int csrcLen = csrcCount * 4;
+            std::cout << "csrc len: " << csrcLen << '\n';
             
             bs.skip(csrcLen * 8);
 
@@ -381,6 +387,10 @@ int main(int argc, char* argv[]) {
             }
             
             std::cout << "data_view: " << std::distance(bs.position(), data_view.end())<< '\n';
+            if (rtpHeader.payloadType == 108) {
+                Raysharp::parsedtPayload(bs);
+                return 0;
+            }
         }
         else {
             payload.back().append(data.substr(0, await_data_size));
@@ -411,18 +421,19 @@ int main(int argc, char* argv[]) {
         }
     }*/
 
-    try {
-        net::io_context ioc{ 1 };
-        net::signal_set signals(ioc, SIGINT, SIGTERM);
-        signals.async_wait([&ioc](auto, auto) { ioc.stop(); });
-        net::co_spawn(ioc, http_listener({ tcp::v4(), 80 }, httpRequests), net::detached);
-        net::co_spawn(ioc, rtsp_listener({ tcp::v4(), 554 }, rtspStreams), net::detached);
-        ioc.run();
-    }
-    catch (std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return EXIT_FAILURE;
-    }
+    // try {
+    //     net::io_context ioc{ 1 };
+    //     net::signal_set signals(ioc, SIGINT, SIGTERM);
+    //     signals.async_wait([&ioc](auto, auto) { ioc.stop(); });
+        
+    //     net::co_spawn(ioc, http_listener({ tcp::v4(), 80 }, httpRequests), net::detached);
+    //     net::co_spawn(ioc, rtsp_listener({ tcp::v4(), 554 }, rtspStreams), net::detached);
+    //     ioc.run();
+    // }
+    // catch (std::exception& e) {
+    //     std::cerr << "Error: " << e.what() << std::endl;
+    //     return EXIT_FAILURE;
+    // }
         
     return 0;
 }

@@ -1,0 +1,8 @@
+{
+  "dependencies": [
+    "boost",
+    "fmt",
+    "pcapplusplus",
+    "boost-cmake"
+  ]
+}
